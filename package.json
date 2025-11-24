@@ -7,7 +7,8 @@
     "dev": "nodemon src/server.js",
     "start": "node src/server.js",
     "migrate": "node src/prisma-migrate.js",
-    "seed:users": "node prisma/seedUsers.js"
+    "seed:users": "node prisma/seedUsers.js",
+    "seed": "node prisma/seed.js"
   },
   "keywords": [],
   "author": "",

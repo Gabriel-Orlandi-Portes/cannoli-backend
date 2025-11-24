@@ -11,14 +11,15 @@ router.get("/", async (req, res) => {
       return res.status(400).json({ error: "Email é obrigatório" });
     }
 
-    // Buscar todos os pedidos do cliente
     const orders = await prisma.order.findMany({
       where: { customerEmail: email },
       orderBy: { createdAt: "desc" }
     });
 
-    // Se não tiver pedidos
-    if (!orders.length) {
+    // 🔥 remove pedidos com data inválida
+    const validOrders = orders.filter(o => o.createdAt && !isNaN(new Date(o.createdAt)));
+
+    if (!validOrders.length) {
       return res.json({
         summary: {
           name: email,
@@ -33,28 +34,27 @@ router.get("/", async (req, res) => {
       });
     }
 
-    // 🔹 Summary
-    const totalSpent = orders.reduce((t, o) => t + (o.totalAmount || 0), 0);
+    const totalSpent = validOrders.reduce((t, o) => t + (o.totalAmount || 0), 0);
 
     const summary = {
-      name: orders[0].customerName || email,
+      name: validOrders[0].customerName || email,
       totalSpent,
-      totalOrders: orders.length,
-      avgTicket: totalSpent / orders.length,
+      totalOrders: validOrders.length,
+      avgTicket: totalSpent / validOrders.length,
       fidelity:
-        orders.length > 30
+        validOrders.length > 30
           ? "Diamante"
-          : orders.length > 20
+          : validOrders.length > 20
           ? "Ouro"
-          : orders.length > 10
+          : validOrders.length > 10
           ? "Prata"
           : "Bronze"
     };
 
-    // 🔹 Agrupar por mês
     const monthly = {};
-    for (const o of orders) {
-      const m = new Date(o.createdAt).toLocaleString("pt-BR", { month: "short" });
+    for (const o of validOrders) {
+      const date = new Date(o.createdAt);
+      const m = date.toLocaleString("pt-BR", { month: "short" });
       monthly[m] = (monthly[m] || 0) + (o.totalAmount || 0);
     }
 
@@ -63,8 +63,7 @@ router.get("/", async (req, res) => {
       amount: Number(amount.toFixed(2))
     }));
 
-    // 🔹 Últimos pedidos
-    const pedidosRecentes = orders.slice(0, 5).map((o) => ({
+    const pedidosRecentes = validOrders.slice(0, 5).map((o) => ({
       id: o.id,
       store: o.storeName,
       value: o.totalAmount.toFixed(2),
@@ -72,7 +71,6 @@ router.get("/", async (req, res) => {
       date: o.createdAt
     }));
 
-    // 🔹 Campanhas recentes (fake por enquanto)
     const campanhasRecentes = [
       { nome: "Cupom de 10%", tipo: "Desconto", status: "Ativo" },
       { nome: "Semana do Cliente", tipo: "Promoção", status: "Encerrado" }

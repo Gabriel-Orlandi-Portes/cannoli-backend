@@ -7,9 +7,6 @@ export default async function dashboardController(req, res) {
     const start = req.query.start ? new Date(req.query.start) : null;
     const end = req.query.end ? new Date(req.query.end) : null;
 
-    /* ----------------------------------------------
-       DEFINIR INTERVALO REAL USADO PARA AGRUPAMENTO
-    ------------------------------------------------ */
     let intervaloDias = dias;
 
     if (start && end) {
@@ -17,16 +14,12 @@ export default async function dashboardController(req, res) {
       intervaloDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
     }
 
-    // Caso nenhum período personalizado → último X dias
     let dataLimite = null;
     if (!start && !end && dias) {
       dataLimite = new Date();
       dataLimite.setDate(dataLimite.getDate() - dias);
     }
 
-    /* ----------------------------------------------
-       BUSCAR PEDIDOS DO PERÍODO
-    ------------------------------------------------ */
     const orders = await prisma.order.findMany({
       where: {
         createdAt: {
@@ -37,7 +30,10 @@ export default async function dashboardController(req, res) {
       },
     });
 
-    if (!orders.length) {
+    // 🔥 Remove pedidos com datas inválidas
+    const validOrders = orders.filter(o => o.createdAt && !isNaN(new Date(o.createdAt)));
+
+    if (!validOrders.length) {
       return res.json({
         summary: { revenueMonth: 0, ordersYear: 0, avgTicket: 0 },
         revenueByMonth: [],
@@ -45,54 +41,36 @@ export default async function dashboardController(req, res) {
       });
     }
 
-    /* ----------------------------------------------
-       KPI PRINCIPAIS
-    ------------------------------------------------ */
-    const revenueMonth = orders.reduce((t, o) => t + (o.totalAmount ?? 0), 0);
-    const avgTicket = revenueMonth / orders.length;
+    const revenueMonth = validOrders.reduce((t, o) => t + (o.totalAmount ?? 0), 0);
+    const avgTicket = revenueMonth / validOrders.length;
 
-    /* ----------------------------------------------
-       AGRUPAMENTO DINÂMICO
-       <= 31 dias → agrupar por DIA
-       > 31 dias → agrupar por MÊS
-    ------------------------------------------------ */
     const agruparPorDia = intervaloDias && intervaloDias <= 31;
 
     const revenueMap = {};
 
-    orders.forEach((o) => {
+    validOrders.forEach((o) => {
       const date = new Date(o.createdAt);
 
       let chave;
 
       if (agruparPorDia) {
-        // dd/mm (ordenável depois)
         chave = date.toLocaleDateString("pt-BR", {
           day: "2-digit",
           month: "2-digit",
-        }); // "21/11"
+        });
       } else {
-        // mês abreviado → "nov"
         chave = date.toLocaleString("pt-BR", { month: "short" });
       }
 
       revenueMap[chave] = (revenueMap[chave] || 0) + (o.totalAmount ?? 0);
     });
 
-    /* ----------------------------------------------
-       CONVERTER MAP → ARRAY
-    ------------------------------------------------ */
     let revenueByMonth = Object.entries(revenueMap).map(([label, amount]) => ({
       month: label,
       amount,
     }));
 
-    /* ----------------------------------------------
-       🔥 ORDENAR CORRETAMENTE
-    ------------------------------------------------ */
-
     if (agruparPorDia) {
-      // ordenar por dd/mm
       revenueByMonth.sort((a, b) => {
         const [diaA, mesA] = a.month.split("/").map(Number);
         const [diaB, mesB] = b.month.split("/").map(Number);
@@ -103,21 +81,7 @@ export default async function dashboardController(req, res) {
         return dataA - dataB;
       });
     } else {
-      // ordenar meses abreviados
-      const ordemMeses = [
-        "jan",
-        "fev",
-        "mar",
-        "abr",
-        "mai",
-        "jun",
-        "jul",
-        "ago",
-        "set",
-        "out",
-        "nov",
-        "dez",
-      ];
+      const ordemMeses = ["jan","fev","mar","abr","mai","jun","jul","ago","set","out","nov","dez"];
 
       revenueByMonth.sort(
         (a, b) =>
@@ -126,12 +90,9 @@ export default async function dashboardController(req, res) {
       );
     }
 
-    /* ----------------------------------------------
-       AGRUPAR POR LOJA
-    ------------------------------------------------ */
     const storeMap = {};
 
-    orders.forEach((o) => {
+    validOrders.forEach((o) => {
       if (!o.storeName) return;
       storeMap[o.storeName] =
         (storeMap[o.storeName] || 0) + (o.totalAmount ?? 0);
@@ -142,13 +103,10 @@ export default async function dashboardController(req, res) {
       amount,
     }));
 
-    /* ----------------------------------------------
-       RETORNO FINAL
-    ------------------------------------------------ */
     return res.json({
       summary: {
         revenueMonth,
-        ordersYear: orders.length,
+        ordersYear: validOrders.length,
         avgTicket,
       },
       revenueByMonth,

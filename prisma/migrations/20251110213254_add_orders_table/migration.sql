@@ -1,0 +1,27 @@
+-- CreateTable
+CREATE TABLE "Order" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "companyId" TEXT NOT NULL,
+    "containerId" TEXT,
+    "displayId" TEXT,
+    "engineId" TEXT,
+    "engineName" TEXT,
+    "engineType" TEXT,
+    "extraInfo" TEXT,
+    "reference" TEXT,
+    "version" TEXT,
+    "salesChannel" TEXT,
+    "orderTiming" TEXT,
+    "orderType" TEXT,
+    "status" TEXT,
+    "preparationTime" REAL,
+    "scheduledAt" DATETIME,
+    "createdAt" DATETIME NOT NULL,
+    "updatedAt" DATETIME NOT NULL,
+    "total_amount" REAL,
+    "delivery_fee" REAL,
+    "storeName" TEXT,
+    "customerId" TEXT,
+    "customerName" TEXT,
+    "customerEmail" TEXT
+);

@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model CampaignQueue {
+  id              String   @id
+  jobId           String
+  campaignId      String
+  storeId         String
+  storeInstanceId String
+  customerId      String
+  phoneNumber     String
+  scheduledAt     DateTime
+  sendAt          DateTime
+  status          Int
+  message         String
+  response        String?
+  createdAt       DateTime
+  createdBy       String
+  updatedAt       DateTime?
+  updatedBy       String?
+}
+
+model Campaign {
+  id          String   @id
+  segmentId   String?
+  templateId  String
+  storeId     String
+  name        String
+  description String?
+  badge       String?
+  type        Int
+  status      Int
+  isDefault   Boolean
+  createdAt   DateTime
+  createdBy   String
+  updatedAt   DateTime?
+  updatedBy   String?
+  segmentName String?
+  storeName   String?
+  templateName String?
+}
+
+model Customer {
+  id              String   @id @default(uuid())
+  name            String
+  customerEmail   String   @unique
+  customerPhone   String?
+  createdAt       DateTime @default(now())
+  taxId           String?
+  gender         String?
+  dateOfBirth    DateTime?
+  status         Int
+  externalCode   String?
+  isEnriched     Boolean?
+  createdBy      String
+  updatedAt      DateTime?
+  updatedBy      String?
+  customerCity   String?
+  customerState  String?
+}
+
+model Order {
+  id                       String   @id
+  displayId                String?
+  companyId                String
+  customerId               String?
+  customerName             String?
+  customerEmail            String?
+  storeName                String?
+  salesChannel             String?
+  preparationStartDateTime DateTime?
+  deliveryDateTime         DateTime?
+  preparationTime          Float?
+  orderTiming              String?
+  orderType                String?
+  status                   String?
+  totalAmount              Float?
+  deliveryFee              Float?
+  createdAt                DateTime
+  updatedAt                DateTime
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String
+  role      String   // "admin" ou "cliente"
+  createdAt DateTime @default(now())
+}
+  
